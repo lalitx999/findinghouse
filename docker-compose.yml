@@ -1,0 +1,23 @@
+services:
+  # ------------------------------------------------------------
+  # Finding House Backend (Django REST Framework + Daphne ASGI)
+  # ------------------------------------------------------------
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: findinghouse_backend
+    restart: always
+    ports:
+      - "8013:8000"
+    env_file:
+      - .env
+    volumes:
+      - /mnt/findinghouse:/app/media
+      - ./static:/app/static
+    networks:
+      - global_net
+
+networks:
+  global_net:
+    external: true
