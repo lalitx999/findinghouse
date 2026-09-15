@@ -1,7 +1,4 @@
 services:
-  # ------------------------------------------------------------
-  # Finding House Backend (Django REST Framework + Daphne ASGI)
-  # ------------------------------------------------------------
   backend:
     build:
       context: .
@@ -13,11 +10,11 @@ services:
     env_file:
       - .env
     volumes:
-      - /mnt/findinghouse:/app/media
+      - /mnt/hdd_backup/findinghouse:/app/media
       - ./static:/app/static
     networks:
-      - global_net
+      - db-network
 
 networks:
-  global_net:
+  db-network:
     external: true

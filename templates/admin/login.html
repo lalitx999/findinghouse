@@ -1,2 +1,117 @@
-{% extends "admin/login.html" %}
-{# Delegate admin behavior and media to the installed Django version. #}
+{% load static i18n %}
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
+    <title>เข้าสู่ระบบผู้ดูแลระบบ | Finding House CoolAdmin</title>
+    
+    <!-- CoolAdmin CSS Assets -->
+    <link href="{% static 'css/font-face.css' %}" rel="stylesheet" media="all"/>
+    <link href="{% static 'vendor/fontawesome-7.3.1/css/all.min.css' %}" rel="stylesheet" media="all"/>
+    <link href="{% static 'vendor/bootstrap-5.3.8.min.css' %}" rel="stylesheet" media="all"/>
+    <link href="{% static 'css/theme.css' %}" rel="stylesheet" media="all"/>
+    <link href="{% static 'css/app.css' %}" rel="stylesheet" media="all"/>
+
+    <style>
+      body.auth-page {
+        background-color: #0f172a !important;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      }
+      .login-content {
+        background: #ffffff;
+        border-radius: 24px;
+        padding: 40px;
+        width: 100%;
+        max-width: 440px;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+      }
+      .auth-brand {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        margin-bottom: 24px;
+        text-decoration: none;
+      }
+      .au-input {
+        width: 100%;
+        padding: 12px 16px;
+        border-radius: 12px;
+        border: 1px solid #cbd5e1;
+        font-size: 14px;
+        margin-top: 6px;
+        margin-bottom: 16px;
+        outline: none;
+        transition: border-color 0.2s;
+      }
+      .au-input:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+      }
+      .au-btn--green {
+        background: #0f172a;
+        color: #ffffff;
+        width: 100%;
+        padding: 14px;
+        border-radius: 12px;
+        font-weight: 700;
+        border: none;
+        font-size: 15px;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+      .au-btn--green:hover {
+        background: #1e293b;
+      }
+    </style>
+</head>
+<body class="app auth-page">
+  <main class="login-wrap">
+    <div class="login-content">
+      
+      <div class="auth-brand">
+        <span style="font-weight: 900; font-size: 24px; color: #0f172a; letter-spacing: 1px;">FINDING <span style="color: #f59e0b; font-weight: 400;">HOUSE</span></span>
+        <span class="badge bg-warning text-dark ms-1" style="font-size: 10px; font-weight: 800;">ADMIN</span>
+      </div>
+      
+      <h2 class="text-center font-black mb-1" style="font-weight: 900; font-size: 20px; color: #0f172a;">ยินดีต้อนรับกลับเข้าสู่ระบบ</h2>
+      <p class="text-center text-slate-500 mb-4" style="font-size: 13px; color: #64748b;">กรอกชื่อผู้ใช้และรหัสผ่านเพื่อเข้าสู่แผงควบคุม CoolAdmin</p>
+
+      {% if form.errors %}
+      <div class="alert alert-danger py-2 text-center" style="font-size: 13px; border-radius: 10px;">
+        ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง
+      </div>
+      {% endif %}
+
+      <form action="{{ app_path }}" method="post">
+        {% csrf_token %}
+        <div class="form-group">
+          <label for="id_username" style="font-size: 13px; font-weight: 700; color: #334155;">ชื่อผู้ใช้ (Username)</label>
+          <input id="id_username" class="au-input" type="text" name="username" placeholder="ระบุชื่อผู้ใช้..." required autofocus>
+        </div>
+
+        <div class="form-group">
+          <label for="id_password" style="font-size: 13px; font-weight: 700; color: #334155;">รหัสผ่าน (Password)</label>
+          <input id="id_password" class="au-input" type="password" name="password" placeholder="••••••••" required>
+        </div>
+
+        <button class="au-btn au-btn--green" type="submit">
+          <i class="fas fa-sign-in-alt me-2"></i> เข้าสู่ระบบ CoolAdmin
+        </button>
+      </form>
+
+      <div class="text-center mt-4">
+        <a href="http://localhost:3000" class="text-secondary text-decoration-none" style="font-size: 12px;">
+          &larr; กลับสู่หน้าเว็บหลัก Finding House
+        </a>
+      </div>
+
+    </div>
+  </main>
+</body>
+</html>
