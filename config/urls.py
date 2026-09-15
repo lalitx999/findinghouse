@@ -56,5 +56,6 @@ urlpatterns = [
     path('api/', include(router.urls)),
 ]
 
-# Serve media files from MEDIA_ROOT (/mnt/findinghouse volume)
+# Serve static and media files
+urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
