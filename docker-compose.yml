@@ -1,0 +1,20 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: findinghouse_backend
+    restart: always
+    ports:
+      - "8013:8000"
+    env_file:
+      - .env
+    volumes:
+      - /mnt/hdd_backup/findinghouse:/app/media
+      - ./static:/app/static
+    networks:
+      - db-network
+
+networks:
+  db-network:
+    external: true

@@ -1,0 +1,276 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block content %}
+
+<!-- CoolAdmin Executive KPI Stat Cards (100% Real Database Live Data) -->
+<div class="row g-4 mb-4">
+  
+  <!-- Stat Card 1: Active Listings -->
+  <div class="col-xl-3 col-md-6">
+    <div class="cool-stat-widget">
+      <div>
+        <div class="text-uppercase font-bold text-slate-500 mb-1" style="font-size: 11px; letter-spacing: 0.05em; color: #64748b;">
+          ประกาศที่เผยแพร่อยู่
+        </div>
+        <h2 class="font-black text-slate-900 mb-0" style="font-weight: 900; font-size: 28px; color: #0f172a;">
+          {{ dashboard_stats.published_properties|default:"0" }}
+        </h2>
+        <div class="mt-1" style="font-size: 11px; color: #10b981; font-weight: 700;">
+          <i class="fas fa-check-circle me-1"></i> Active Listings
+        </div>
+      </div>
+      <div class="stat-icon-wrapper" style="background: #eff6ff; color: #2563eb;">
+        <i class="fas fa-building"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stat Card 2: Active Leads -->
+  <div class="col-xl-3 col-md-6">
+    <div class="cool-stat-widget">
+      <div>
+        <div class="text-uppercase font-bold text-slate-500 mb-1" style="font-size: 11px; letter-spacing: 0.05em; color: #64748b;">
+          ลีดความต้องการลูกค้า
+        </div>
+        <h2 class="font-black text-slate-900 mb-0" style="font-weight: 900; font-size: 28px; color: #0f172a;">
+          {{ dashboard_stats.active_leads|default:"0" }}
+        </h2>
+        <div class="mt-1" style="font-size: 11px; color: #f59e0b; font-weight: 700;">
+          <i class="fas fa-clock me-1"></i> In Pipeline (Active)
+        </div>
+      </div>
+      <div class="stat-icon-wrapper" style="background: #fffbeb; color: #d97706;">
+        <i class="fas fa-user-tie"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stat Card 3: Total Revenue -->
+  <div class="col-xl-3 col-md-6">
+    <div class="cool-stat-widget">
+      <div>
+        <div class="text-uppercase font-bold text-slate-500 mb-1" style="font-size: 11px; letter-spacing: 0.05em; color: #64748b;">
+          ยอดขายปิดดีลรวม
+        </div>
+        <h2 class="font-black text-slate-900 mb-0" style="font-weight: 900; font-size: 24px; color: #0f172a;">
+          ฿{{ dashboard_stats.total_revenue|floatformat:"0"|default:"0" }}
+        </h2>
+        <div class="mt-1" style="font-size: 11px; color: #10b981; font-weight: 700;">
+          <i class="fas fa-arrow-up me-1"></i> Closed Won Revenue
+        </div>
+      </div>
+      <div class="stat-icon-wrapper" style="background: #ecfdf5; color: #059669;">
+        <i class="fas fa-chart-line"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stat Card 4: Total Commission -->
+  <div class="col-xl-3 col-md-6">
+    <div class="cool-stat-widget">
+      <div>
+        <div class="text-uppercase font-bold text-slate-500 mb-1" style="font-size: 11px; letter-spacing: 0.05em; color: #64748b;">
+          ยอดคอมมิชชันสะสม
+        </div>
+        <h2 class="font-black text-slate-900 mb-0" style="font-weight: 900; font-size: 24px; color: #0f172a;">
+          ฿{{ dashboard_stats.total_commission|floatformat:"0"|default:"0" }}
+        </h2>
+        <div class="mt-1" style="font-size: 11px; color: #8b5cf6; font-weight: 700;">
+          <i class="fas fa-coins me-1"></i> Total Commission
+        </div>
+      </div>
+      <div class="stat-icon-wrapper" style="background: #f5f3ff; color: #7c3aed;">
+        <i class="fas fa-wallet"></i>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Real DB Data Tables Row 1: Recent Deals & Recent Leads -->
+<div class="row g-4 mb-4">
+  
+  <!-- Table 1: Live Recent Deals Pipeline -->
+  <div class="col-xl-7">
+    <div class="cool-card h-100">
+      <div class="d-flex align-items-center justify-between border-bottom pb-3 mb-3">
+        <h5 class="fw-bold mb-0 text-slate-900 d-flex align-items-center gap-2">
+          <i class="fas fa-briefcase text-primary"></i> ดีลการขายล่าสุด (Live Deals Pipeline)
+        </h5>
+        <a href="/admin/crm/deal/" class="btn btn-sm btn-light border font-bold text-primary">
+          ดูทั้งหมด <i class="fas fa-arrow-right ms-1"></i>
+        </a>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-borderless align-middle mb-0">
+          <thead>
+            <tr>
+              <th>ชื่อดีล</th>
+              <th>ทรัพย์สิน</th>
+              <th>ราคาตกลง</th>
+              <th>ขั้นตอน (Stage)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for deal in dashboard_stats.recent_deals %}
+            <tr>
+              <td>
+                <a href="/admin/crm/deal/{{ deal.id }}/change/" class="fw-bold text-dark text-decoration-none">
+                  {{ deal.title }}
+                </a>
+              </td>
+              <td class="text-secondary small">{{ deal.property.title|truncatechars:25 }}</td>
+              <td class="fw-bold text-dark">฿{{ deal.agreed_price|floatformat:"0" }}</td>
+              <td>
+                {% if deal.stage == 'CLOSED_WON' %}
+                  <span class="badge bg-success">CLOSED WON</span>
+                {% elif deal.stage == 'VIEWING' %}
+                  <span class="badge bg-warning text-dark">VIEWING</span>
+                {% elif deal.stage == 'PROPOSAL' %}
+                  <span class="badge bg-info">PROPOSAL</span>
+                {% else %}
+                  <span class="badge bg-secondary">{{ deal.stage }}</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="4" class="text-center py-4 text-muted small">ยังไม่มีรายการดีลในระบบ</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Table 2: Live Recent Leads -->
+  <div class="col-xl-5">
+    <div class="cool-card h-100">
+      <div class="d-flex align-items-center justify-between border-bottom pb-3 mb-3">
+        <h5 class="fw-bold mb-0 text-slate-900 d-flex align-items-center gap-2">
+          <i class="fas fa-user-plus text-warning"></i> ลีดลูกค้าใหม่ล่าสุด
+        </h5>
+        <a href="/admin/crm/lead/" class="btn btn-sm btn-light border font-bold text-warning">
+          ดูทั้งหมด <i class="fas fa-arrow-right ms-1"></i>
+        </a>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-borderless align-middle mb-0">
+          <thead>
+            <tr>
+              <th>ชื่อลูกค้า</th>
+              <th>เบอร์โทร</th>
+              <th>ประเภท</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for lead in dashboard_stats.recent_leads %}
+            <tr>
+              <td>
+                <a href="/admin/crm/lead/{{ lead.id }}/change/" class="fw-bold text-dark text-decoration-none">
+                  คุณ {{ lead.name }}
+                </a>
+              </td>
+              <td class="text-secondary small">{{ lead.phone }}</td>
+              <td>
+                <span class="badge {% if lead.lead_type == 'BUYER' %}bg-primary{% else %}bg-info{% endif %}">
+                  {{ lead.get_lead_type_display }}
+                </span>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="3" class="text-center py-4 text-muted small">ยังไม่มีรายการลีดใหม่ในระบบ</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Real DB Data Tables Row 2: Recent Audit Logs & System Quick Actions -->
+<div class="row g-4">
+  
+  <!-- Live Audit Logs -->
+  <div class="col-xl-8">
+    <div class="cool-card">
+      <div class="d-flex align-items-center justify-between border-bottom pb-3 mb-3">
+        <h5 class="fw-bold mb-0 text-slate-900 d-flex align-items-center gap-2">
+          <i class="fas fa-history text-danger"></i> ประวัติกิจกรรมระบบล่าสุด (Live Audit Logs)
+        </h5>
+        <a href="/admin/audit/auditlog/" class="btn btn-sm btn-light border font-bold text-danger">
+          ดูทั้งหมด <i class="fas fa-arrow-right ms-1"></i>
+        </a>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-borderless align-middle mb-0">
+          <thead>
+            <tr>
+              <th>เวลา</th>
+              <th>ผู้ใช้งาน</th>
+              <th>การกระทำ</th>
+              <th>ระบบ/โมเดล</th>
+              <th>IP Address</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for log in dashboard_stats.recent_audit_logs %}
+            <tr>
+              <td class="text-secondary small">{{ log.timestamp|date:"d/m/H:i" }}</td>
+              <td class="fw-bold text-dark">{{ log.user.username|default:"System" }}</td>
+              <td>
+                <span class="badge {% if log.action == 'CREATE' %}bg-success{% elif log.action == 'DELETE' %}bg-danger{% else %}bg-secondary{% endif %}">
+                  {{ log.get_action_display }}
+                </span>
+              </td>
+              <td class="small text-dark">{{ log.model_name }}</td>
+              <td class="text-secondary small">{{ log.ip_address|default:"127.0.0.1" }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="5" class="text-center py-4 text-muted small">ยังไม่มีประวัติกิจกรรมบันทึกในระบบ</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Management Links -->
+  <div class="col-xl-4">
+    <div class="cool-card">
+      <h5 class="fw-bold mb-3 border-bottom pb-3 text-slate-900">
+        <i class="fas fa-bolt text-warning me-2"></i> เมนูด่วนผู้ดูแลระบบ
+      </h5>
+      <div class="d-grid gap-2">
+        <a href="/admin/properties/property/add/" class="btn btn-primary text-start fw-bold py-2.5">
+          <i class="fas fa-plus-circle me-2"></i> เพิ่มประกาศอสังหาริมทรัพย์ใหม่
+        </a>
+        <a href="/admin/crm/lead/add/" class="btn btn-warning text-dark text-start fw-bold py-2.5">
+          <i class="fas fa-user-plus me-2"></i> เพิ่มข้อมูลลีดลูกค้าใหม่
+        </a>
+        <a href="/admin/crm/deal/add/" class="btn btn-success text-start fw-bold py-2.5">
+          <i class="fas fa-handshake me-2"></i> สร้างดีลการขาย/เช่าใหม่
+        </a>
+        <a href="/admin/chat/chatroom/" class="btn btn-dark text-start fw-bold py-2.5">
+          <i class="fas fa-comments me-2"></i> ตรวจสอบห้องแชตเรียลไทม์
+        </a>
+        <a href="/admin/audit/webhookconfig/" class="btn btn-outline-secondary text-start fw-bold py-2.5">
+          <i class="fas fa-cog me-2"></i> ตั้งค่า Webhooks & Integrations
+        </a>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}

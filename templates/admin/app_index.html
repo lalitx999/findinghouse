@@ -1,0 +1,27 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content_title %}{{ app_label|capfirst }}{% endblock %}
+
+{% block content %}
+<div class="cool-card">
+  <h3 class="fw-bold mb-4" style="font-size: 20px; color: #0f172a;">
+    <i class="fas fa-folder-open me-2 text-warning"></i>{{ app_label|capfirst }}
+  </h3>
+  <div class="row g-3">
+    {% for model in app_list.0.models %}
+    <div class="col-md-4">
+      <a href="{{ model.admin_url }}" class="cool-stat-widget d-flex align-items-center gap-3 text-decoration-none p-3">
+        <div class="stat-icon-wrapper" style="background: #f1f5f9;">
+          <i class="fas fa-table text-slate-500"></i>
+        </div>
+        <div>
+          <div class="fw-bold text-dark" style="font-size: 14px;">{{ model.name }}</div>
+          <small class="text-secondary">จัดการข้อมูล</small>
+        </div>
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
