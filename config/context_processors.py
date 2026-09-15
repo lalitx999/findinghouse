@@ -1,46 +1,89 @@
+"""Permission-aware dashboard data; only query business data on the admin index."""
+import logging
+from decimal import Decimal
+from urllib.parse import urlsplit
+
+from django.conf import settings
+from django.contrib import admin
+from django.db import DatabaseError
 from django.db.models import Sum
+from django.urls import reverse
+
 from properties.models import Property
 from crm.models import Lead, Deal, LeaseAgreement, ViewingAppointment
 from audit.models import AuditLog
 
+logger = logging.getLogger(__name__)
+
+
 def admin_dashboard_stats(request):
-    if not request.path.startswith('/admin/'):
-        return {}
+    site_url = getattr(settings, 'FINDINGHOUSE_SITE_URL', '')
+    parsed = urlsplit(site_url)
+    context = {'findinghouse_site_url': site_url if parsed.scheme in {'http', 'https'} and parsed.netloc else ''}
+    match = getattr(request, 'resolver_match', None)
+    user = getattr(request, 'user', None)
+    if not (match and match.namespace == admin.site.name and match.url_name == 'index'
+            and user and user.is_active and user.is_staff):
+        return context
+
+    def permitted_queryset(model):
+        model_admin = admin.site._registry.get(model)
+        if model_admin is None or not model_admin.has_view_or_change_permission(request):
+            return None
+        queryset = model_admin.get_queryset(request)
+        if any(field.name == 'is_deleted' for field in model._meta.fields):
+            queryset = queryset.filter(is_deleted=False)
+        return queryset
+
+    cards, sections = [], []
+
+    def card(label, value, money=False):
+        cards.append({'label': label, 'value': value, 'money': money})
+
+    def section(model, label, queryset, ordering, label_field, detail_field=None):
+        opts = model._meta
+        rows = []
+        for obj in queryset.order_by(ordering)[:5]:
+            # Honor object-level view hooks as well as the ModelAdmin queryset.
+            if not admin.site._registry[model].has_view_or_change_permission(request, obj):
+                continue
+            display = getattr(obj, label_field)
+            detail = getattr(obj, detail_field) if detail_field else ''
+            rows.append({'label': display, 'detail': detail,
+                         'url': reverse(f'admin:{opts.app_label}_{opts.model_name}_change', args=[obj.pk])})
+        sections.append({'label': label, 'rows': rows,
+                         'url': reverse(f'admin:{opts.app_label}_{opts.model_name}_changelist')})
 
     try:
-        published_properties_count = Property.objects.filter(status='PUBLISHED').count()
-        active_leads_count = Lead.objects.exclude(status__in=['CLOSED_WON', 'CLOSED_LOST']).count()
-        total_leads_count = Lead.objects.count()
-        
-        closed_won_deals = Deal.objects.filter(stage='CLOSED_WON')
-        total_revenue = closed_won_deals.aggregate(total=Sum('agreed_price'))['total'] or 0.0
-        commission_sum = closed_won_deals.aggregate(total=Sum('commission_amount'))['total'] or 0.0
-        company_share_sum = closed_won_deals.aggregate(total=Sum('company_share'))['total'] or 0.0
-        
-        expiring_leases_count = LeaseAgreement.objects.filter(status__in=['EXPIRING_SOON', 'EXPIRED']).count()
-        total_appointments_count = ViewingAppointment.objects.count()
-
-        # Recent Real DB Objects for Live Admin Widgets
-        recent_deals = list(Deal.objects.select_related('property', 'lead', 'agent').order_by('-updated_at')[:5])
-        recent_leads = list(Lead.objects.order_by('-created_at')[:5])
-        recent_properties = list(Property.objects.select_related('category', 'location').order_by('-created_at')[:5])
-        recent_audit_logs = list(AuditLog.objects.select_related('user').order_by('-timestamp')[:5])
-
-        return {
-            'dashboard_stats': {
-                'published_properties': published_properties_count,
-                'active_leads': active_leads_count,
-                'total_leads': total_leads_count,
-                'total_revenue': total_revenue,
-                'total_commission': commission_sum,
-                'company_share': company_share_sum,
-                'expiring_leases': expiring_leases_count,
-                'total_appointments': total_appointments_count,
-                'recent_deals': recent_deals,
-                'recent_leads': recent_leads,
-                'recent_properties': recent_properties,
-                'recent_audit_logs': recent_audit_logs,
-            }
-        }
-    except Exception as e:
-        return {}
+        properties = permitted_queryset(Property)
+        if properties is not None:
+            card('ประกาศที่เผยแพร่', properties.filter(status='PUBLISHED').count())
+            section(Property, 'ประกาศล่าสุด', properties, '-created_at', 'title', 'property_code')
+        leads = permitted_queryset(Lead)
+        if leads is not None:
+            card('ลีดที่กำลังติดตาม', leads.exclude(status__in=['CLOSED_WON', 'CLOSED_LOST']).count())
+            card('ลีดทั้งหมด', leads.count())
+            section(Lead, 'ลีดล่าสุด', leads, '-created_at', 'name', 'phone')
+        deals = permitted_queryset(Deal)
+        if deals is not None:
+            totals = deals.filter(stage='CLOSED_WON').aggregate(
+                revenue=Sum('agreed_price'), commission=Sum('commission_amount'), company=Sum('company_share'))
+            for key, label in [('revenue', 'ยอดขายปิดดีล'), ('commission', 'คอมมิชชันรวม'), ('company', 'ส่วนแบ่งบริษัท')]:
+                card(label, totals[key] or Decimal('0'), money=True)
+            section(Deal, 'ดีลล่าสุด', deals, '-updated_at', 'title', 'stage')
+        leases = permitted_queryset(LeaseAgreement)
+        if leases is not None:
+            card('สัญญาใกล้หมด / หมดอายุ', leases.filter(status__in=['EXPIRING_SOON', 'EXPIRED']).count())
+        appointments = permitted_queryset(ViewingAppointment)
+        if appointments is not None:
+            card('นัดเข้าชมทั้งหมด', appointments.count())
+        logs = permitted_queryset(AuditLog)
+        if logs is not None:
+            section(AuditLog, 'กิจกรรมระบบล่าสุด', logs, '-timestamp', 'object_repr', 'action')
+    except DatabaseError:
+        logger.exception('Unable to load admin dashboard statistics')
+        context['dashboard_unavailable'] = True
+        return context
+    context['dashboard_cards'] = cards
+    context['dashboard_sections'] = sections
+    return context
