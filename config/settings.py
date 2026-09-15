@@ -24,6 +24,7 @@ DEBUG = os.getenv('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = ['*']
 
 INSTALLED_APPS = [
+    'vault_admin',
     'django.contrib.contenttypes',
     'django.contrib.auth',
     'django.contrib.admin',
