@@ -21,12 +21,27 @@ class LocationViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = LocationSerializer
 
 
-class PropertyViewSet(viewsets.ReadOnlyModelViewSet):
+class PropertyViewSet(viewsets.ModelViewSet):
     serializer_class = PropertySerializer
     lookup_field = 'slug'
 
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve', 'features_schema']:
+            return [AllowAny()]
+        if self.action in ['create_user_listing']:
+            return [IsAuthenticated()]
+        return [IsAdminUser()]
+
     def get_queryset(self):
-        queryset = Property.objects.filter(status='PUBLISHED').prefetch_related('images')
+        user = self.request.user
+        status_param = self.request.query_params.get('status', None)
+
+        if user and user.is_authenticated and user.is_staff:
+            queryset = Property.objects.all().prefetch_related('images')
+            if status_param and status_param != 'ALL':
+                queryset = queryset.filter(status=status_param)
+        else:
+            queryset = Property.objects.filter(status='PUBLISHED').prefetch_related('images')
         
         # Parsing request query parameters for dynamic filters
         q = self.request.query_params.get('q', None)
