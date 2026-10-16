@@ -1,6 +1,6 @@
 from rest_framework import viewsets, status
 from rest_framework.response import Response
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from rest_framework.decorators import action
 from django.db.models import Q
 from .models import Category, Location, Property, Bookmark, Consignment, ConsignmentImage, ConsignmentDeed
@@ -168,8 +168,20 @@ class BookmarkViewSet(viewsets.ModelViewSet):
 
 
 class ConsignmentViewSet(viewsets.ModelViewSet):
-    queryset = Consignment.objects.all()
-    permission_classes = [AllowAny]
+    serializer_class = ConsignmentSerializer
+
+    def get_permissions(self):
+        # Allow anyone to submit a new consignment form (POST create)
+        if self.action == 'create':
+            return [AllowAny()]
+        # All management actions (list, retrieve, update, destroy) require Admin / Staff
+        return [IsAdminUser()]
+
+    def get_queryset(self):
+        # Strict protection: Only staff/admin can query consignment records
+        if not self.request.user or not self.request.user.is_authenticated or not self.request.user.is_staff:
+            return Consignment.objects.none()
+        return Consignment.objects.all().prefetch_related('images', 'deeds')
 
     def get_serializer_class(self):
         if self.action in ['create']:
@@ -179,23 +191,65 @@ class ConsignmentViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+
+        images = request.FILES.getlist('images')
+        deeds = request.FILES.getlist('deeds')
+
+        # Security: File Count and Size Limit Checks
+        MAX_IMAGES = 25
+        MAX_DEEDS = 10
+        MAX_FILE_SIZE = 15 * 1024 * 1024  # 15 MB per file
+        ALLOWED_EXTS = {'.jpg', '.jpeg', '.png', '.webp', '.pdf'}
+
+        import os
+
+        if len(images) > MAX_IMAGES:
+            return Response(
+                {'error': f'แนบรูปภาพทรัพย์ได้สูงสุดไม่เกิน {MAX_IMAGES} รูป (แนบมา {len(images)} รูป)'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if len(deeds) > MAX_DEEDS:
+            return Response(
+                {'error': f'แนบเอกสารโฉนดได้สูงสุดไม่เกิน {MAX_DEEDS} ไฟล์ (แนบมา {len(deeds)} ไฟล์)'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        for f in images + deeds:
+            if f.size > MAX_FILE_SIZE:
+                return Response(
+                    {'error': f'ไฟล์ {f.name} มีขนาดเกินกำหนด (สูงสุดไม่เกิน 15 MB ต่อไฟล์)'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            ext = os.path.splitext(f.name)[1].lower()
+            if ext not in ALLOWED_EXTS:
+                return Response(
+                    {'error': f'ไฟล์ {f.name} ไม่รองรับ (รองรับเฉพาะไฟล์รูปภาพ .jpg, .png, .webp หรือ .pdf)'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
         consignment = serializer.save()
 
         # Handle multiple uploaded property images
-        images = request.FILES.getlist('images')
         for img in images:
             ConsignmentImage.objects.create(consignment=consignment, image=img)
 
         # Handle multiple uploaded confidential deed images
-        deeds = request.FILES.getlist('deeds')
         for deed in deeds:
             ConsignmentDeed.objects.create(consignment=consignment, deed_image=deed)
 
         headers = self.get_success_headers(serializer.data)
-        return Response(
-            ConsignmentSerializer(consignment).data, 
-            status=status.HTTP_201_CREATED, 
-            headers=headers
-        )
+        # Return sanitized summary response without exposing deed URLs directly
+        return Response({
+            'id': consignment.id,
+            'owner_name': consignment.owner_name,
+            'property_type': consignment.property_type,
+            'status': consignment.status,
+            'images_count': len(images),
+            'deeds_count': len(deeds),
+            'message': 'ส่งเรื่องฝากขายเรียบร้อยแล้ว เจ้าหน้าที่จะติดต่อกลับเพื่อตรวจสอบข้อมูล',
+            'created_at': consignment.created_at
+        }, status=status.HTTP_201_CREATED, headers=headers)
+
 
 

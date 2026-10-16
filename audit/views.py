@@ -78,9 +78,28 @@ class RequestOTPView(APIView):
         # Generate 6-digit OTP
         otp_obj = UserTwoFactorOTP.generate_otp(user=user, validity_minutes=5)
 
+        # Dispatch OTP to user's registered email
+        if user.email:
+            try:
+                from django.core.mail import send_mail
+                send_mail(
+                    subject="[Finding House] รหัสยืนยัน OTP สำหรับเข้าสู่ระบบ",
+                    message=f"รหัส OTP สำหรับยืนยันตัวตน 2FA ของคุณคือ: {otp_obj.otp_code} (มีอายุ 5 นาที)\n\nหากคุณไม่ได้เป็นผู้ทำรายการ โปรดติดต่อผู้ดูแลระบบทันที",
+                    from_email=None,
+                    recipient_list=[user.email],
+                    fail_silently=True
+                )
+            except Exception:
+                pass
+
+        masked_email = ''
+        if user.email and '@' in user.email:
+            parts = user.email.split('@')
+            masked_email = f"{parts[0][:2]}***@{parts[1]}"
+
         return Response({
-            'message': 'สร้างรหัส OTP 6 หลักสำเร็จแล้ว',
-            'otp_code': otp_obj.otp_code,  # Included for preview/testing
+            'message': 'สร้างและจัดส่งรหัส OTP 6 หลักเรียบร้อยแล้ว (มีอายุ 5 นาที)',
+            'sent_to': masked_email if masked_email else 'อีเมลประจำบัญชี',
             'expires_at': otp_obj.expires_at.strftime('%Y-%m-%d %H:%M:%S'),
             'validity_minutes': 5
         }, status=status.HTTP_200_OK)

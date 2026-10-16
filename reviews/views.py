@@ -24,7 +24,13 @@ class ArticleViewSet(viewsets.ReadOnlyModelViewSet):
 
 class CustomerReviewViewSet(viewsets.ModelViewSet):
     serializer_class = CustomerReviewSerializer
-    permission_classes = [permissions.AllowAny]
+
+    def get_permissions(self):
+        # Public can view approved reviews and submit new reviews for admin moderation
+        if self.action in ['list', 'retrieve', 'create']:
+            return [permissions.AllowAny()]
+        # Only admin / staff can edit or delete existing reviews
+        return [permissions.IsAdminUser()]
 
     def get_queryset(self):
         # Public gets only approved reviews
@@ -35,3 +41,4 @@ class CustomerReviewViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         # New reviews submitted by guests/users wait for admin approval
         serializer.save(is_approved=False)
+

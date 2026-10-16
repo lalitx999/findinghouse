@@ -6,10 +6,23 @@ from chat.serializers import ChatRoomSerializer, ChatMessageSerializer
 from audit.utils_fcm import send_fcm_admin_notification
 
 class ChatRoomViewSet(viewsets.ModelViewSet):
-    queryset = ChatRoom.objects.all()
     serializer_class = ChatRoomSerializer
-    permission_classes = [permissions.AllowAny]
     lookup_field = 'room_name'
+
+    def get_permissions(self):
+        # Participating in a room (create room, view room, view messages, send message)
+        if self.action in ['create', 'retrieve', 'messages', 'send_message']:
+            return [permissions.AllowAny()]
+        # Listing all rooms across the system or deleting rooms requires Admin/Staff
+        return [permissions.IsAdminUser()]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user and user.is_authenticated and user.is_staff:
+            return ChatRoom.objects.all().select_related('property', 'lead', 'agent')
+        if self.action == 'list':
+            return ChatRoom.objects.none()
+        return ChatRoom.objects.all().select_related('property', 'lead', 'agent')
 
     @action(detail=True, methods=['get'])
     def messages(self, request, room_name=None):
@@ -21,16 +34,30 @@ class ChatRoomViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def send_message(self, request, room_name=None):
         room = self.get_object()
-        sender_name = request.data.get('sender_name', 'Guest Buyer')
         message_text = request.data.get('message', '')
-        is_agent = request.data.get('is_agent', False)
 
         if not message_text.strip():
             return Response({'detail': 'Message content cannot be empty.'}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Anti-Impersonation: Verify agent identity strictly on the server side
+        user = request.user
+        is_agent = False
+        if user and user.is_authenticated:
+            if user.is_staff or user.is_superuser:
+                is_agent = True
+            else:
+                profile = getattr(user, 'profile', None)
+                if profile and profile.role in ['SUPER_ADMIN', 'BRANCH_MANAGER', 'SENIOR_AGENT', 'JUNIOR_AGENT']:
+                    is_agent = True
+
+        if is_agent:
+            sender_name = f"{user.first_name} {user.last_name}".strip() or user.username
+        else:
+            sender_name = request.data.get('sender_name', 'Guest Buyer')
+
         msg = ChatMessage.objects.create(
             room=room,
-            sender=request.user if request.user.is_authenticated else None,
+            sender=user if user.is_authenticated else None,
             sender_name=sender_name,
             message=message_text,
             is_agent=is_agent
@@ -38,7 +65,7 @@ class ChatRoomViewSet(viewsets.ModelViewSet):
 
         room.save() # Update updated_at timestamp
 
-        # Dispatch FCM Admin Notification Push Alert
+        # Dispatch FCM Admin Notification Push Alert only for buyer messages
         if not is_agent:
             send_fcm_admin_notification(
                 title=f"💬 ข้อความแชทใหม่จาก {sender_name}",
@@ -47,3 +74,4 @@ class ChatRoomViewSet(viewsets.ModelViewSet):
             )
 
         return Response(ChatMessageSerializer(msg).data, status=status.HTTP_201_CREATED)
+

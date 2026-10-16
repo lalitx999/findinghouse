@@ -4,12 +4,13 @@ from rest_framework import permissions
 from django.db.models import Count, Sum, Q, Avg
 from crm.models import Lead, Deal, ViewingAppointment
 from properties.models import Property
+from config.permissions import IsAgentOrManager
 
 class AnalyticsDashboardView(APIView):
     """
     Executive & Operational Analytics API for Finding House CRM
     """
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [permissions.IsAuthenticated, IsAgentOrManager]
 
     def get(self, request, *args, **kwargs):
         # 1. Lead Conversion Analytics
