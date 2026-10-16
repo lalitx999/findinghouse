@@ -80,3 +80,14 @@ class LeaseAgreementViewSet(viewsets.ModelViewSet):
             return qs
         return qs.filter(property__agent=user)
 
+
+from crm.models import UserProfile
+from crm.serializers import UserProfileSerializer
+from rest_framework.permissions import IsAdminUser
+
+class AgentViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAdminUser]
+    serializer_class = UserProfileSerializer
+    queryset = UserProfile.objects.all().select_related('user')
+
+

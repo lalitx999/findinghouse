@@ -5,7 +5,7 @@ from rest_framework.decorators import action
 from django.db.models import Q
 from .models import Category, Location, Property, Bookmark, Consignment, ConsignmentImage, ConsignmentDeed
 from .serializers import (
-    CategorySerializer, LocationSerializer, PropertySerializer, 
+    CategorySerializer, LocationSerializer, PropertySerializer, PropertyImageSerializer,
     BookmarkSerializer, BookmarkCreateSerializer,
     ConsignmentSerializer, ConsignmentCreateSerializer
 )
@@ -79,6 +79,53 @@ class PropertyViewSet(viewsets.ModelViewSet):
             'highlights_choices': HIGHLIGHTS_CHOICES,
             'suitable_for_choices': SUITABLE_FOR_CHOICES
         })
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAdminUser])
+    def upload_image(self, request, slug=None):
+        """
+        Uploads and automatically watermarks a new property image for the specified property.
+        """
+        prop = self.get_object()
+        image_file = request.FILES.get('image')
+        if not image_file:
+            return Response({'error': 'กรุณาแนบไฟล์รูปภาพ'}, status=status.HTTP_400_BAD_REQUEST)
+
+        is_cover = str(request.data.get('is_cover', 'false')).lower() in ['true', '1']
+        from .models import PropertyImage
+
+        if is_cover:
+            # Set other images is_cover to False
+            prop.images.filter(is_cover=True).update(is_cover=False)
+
+        last_order = prop.images.count() + 1
+        img_obj = PropertyImage.objects.create(
+            property=prop,
+            image=image_file,
+            is_cover=is_cover,
+            order=last_order
+        )
+        return Response(PropertyImageSerializer(img_obj).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['delete'], url_path='delete_image/(?P<image_id>[0-9]+)', permission_classes=[IsAdminUser])
+    def delete_image(self, request, slug=None, image_id=None):
+        """
+        Deletes a specific property image.
+        """
+        prop = self.get_object()
+        from .models import PropertyImage
+        try:
+            img = prop.images.get(id=image_id)
+            was_cover = img.is_cover
+            img.delete()
+            # If was cover, make first remaining image the cover
+            if was_cover:
+                first_img = prop.images.first()
+                if first_img:
+                    first_img.is_cover = True
+                    first_img.save(update_fields=['is_cover'])
+            return Response({'message': 'ลบรูปภาพสำเร็จ'}, status=status.HTTP_200_OK)
+        except PropertyImage.DoesNotExist:
+            return Response({'error': 'ไม่พบรูปภาพดังกล่าวในทรัพย์นี้'}, status=status.HTTP_404_NOT_FOUND)
 
     @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
     def create_user_listing(self, request):
@@ -265,6 +312,90 @@ class ConsignmentViewSet(viewsets.ModelViewSet):
             'message': 'ส่งเรื่องฝากขายเรียบร้อยแล้ว เจ้าหน้าที่จะติดต่อกลับเพื่อตรวจสอบข้อมูล',
             'created_at': consignment.created_at
         }, status=status.HTTP_201_CREATED, headers=headers)
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAdminUser])
+    def convert_to_property(self, request, pk=None):
+        """
+        1-Click Consignment to Property Converter
+        Converts an approved consignment record directly into a published Property listing.
+        """
+        consignment = self.get_object()
+
+        # 1. Map Category
+        category_map = {
+            'HOUSE': 'บ้าน',
+            'CONDO': 'คอนโด',
+            'LAND': 'ที่ดิน',
+            'WAREHOUSE': 'โรงงาน',
+            'HOTEL': 'โรงแรม',
+        }
+        target_cat_name = category_map.get(consignment.property_type, 'บ้าน')
+        category = Category.objects.filter(name__icontains=target_cat_name).first()
+        if not category:
+            category = Category.objects.first()
+
+        # 2. Map Location
+        location = Location.objects.filter(name__icontains=consignment.province).first()
+        if not location and consignment.district:
+            location = Location.objects.filter(name__icontains=consignment.district).first()
+        if not location:
+            location = Location.objects.first()
+
+        # 3. Extract Specs
+        specs = consignment.specs or {}
+        bedrooms = specs.get('bedrooms')
+        bathrooms = specs.get('bathrooms')
+        usable_size = specs.get('usable_size') or specs.get('size_usable')
+        land_size = specs.get('land_size') or specs.get('size_land')
+
+        # 4. Generate title
+        title = consignment.highlights or f"{consignment.get_property_type_display()} ทำเล {consignment.district or ''} {consignment.province}"
+        if consignment.project_name:
+            title = f"{consignment.project_name} - {title}"
+
+        # 5. Create Property Object
+        prop = Property.objects.create(
+            title=title.strip()[:200],
+            description=consignment.notes or consignment.highlights or f"ทรัพย์ฝากขาย ทำเล {consignment.subdistrict} {consignment.district} {consignment.province}",
+            price=consignment.target_price,
+            property_type='SALE',
+            category=category,
+            location=location,
+            bedrooms=int(bedrooms) if bedrooms and str(bedrooms).isdigit() else None,
+            bathrooms=int(bathrooms) if bathrooms and str(bathrooms).isdigit() else None,
+            size_usable=float(usable_size) if usable_size else None,
+            size_land=float(land_size) if land_size else None,
+            google_maps_link=consignment.google_maps_link or '',
+            seller_name=consignment.owner_name,
+            seller_phone=consignment.owner_phone,
+            seller_line_id=consignment.owner_line_id or '',
+            is_direct_seller=False,
+            status='PUBLISHED',
+            source='FINDING_HOUSE',
+            agent=request.user if request.user and request.user.is_authenticated else None
+        )
+
+        # 6. Copy Property Images
+        for idx, c_img in enumerate(consignment.images.all(), start=1):
+            if c_img.image:
+                PropertyImage.objects.create(
+                    property=prop,
+                    image=c_img.image,
+                    is_cover=(idx == 1),
+                    order=idx
+                )
+
+        # 7. Mark Consignment as APPROVED
+        consignment.status = 'APPROVED'
+        consignment.save(update_fields=['status'])
+
+        return Response({
+            'message': f'แปลงคำขอฝากขายเป็นทรัพย์เรียบร้อยแล้ว รหัสทรัพย์ [{prop.property_code}]',
+            'property_id': prop.id,
+            'property_code': prop.property_code,
+            'slug': prop.slug,
+            'title': prop.title
+        }, status=status.HTTP_201_CREATED)
 
 
 

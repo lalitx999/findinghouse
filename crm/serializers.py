@@ -57,3 +57,23 @@ class LeaseAgreementSerializer(serializers.ModelSerializer):
     class Meta:
         model = LeaseAgreement
         fields = '__all__'
+
+
+from crm.models import UserProfile
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source='user.username', read_only=True)
+    first_name = serializers.CharField(source='user.first_name', read_only=True)
+    last_name = serializers.CharField(source='user.last_name', read_only=True)
+    email = serializers.CharField(source='user.email', read_only=True)
+    is_active = serializers.BooleanField(source='user.is_active', read_only=True)
+    is_staff = serializers.BooleanField(source='user.is_staff', read_only=True)
+
+    class Meta:
+        model = UserProfile
+        fields = [
+            'id', 'user_id', 'username', 'first_name', 'last_name', 'email',
+            'is_active', 'is_staff', 'role', 'branch', 'phone_number',
+            'created_at', 'updated_at'
+        ]
+

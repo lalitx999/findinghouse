@@ -39,12 +39,23 @@ class PropertySerializer(serializers.ModelSerializer):
     price_per_rai = serializers.ReadOnlyField()
     seo_search_phrases = serializers.SerializerMethodField()
 
+    category_id = serializers.PrimaryKeyRelatedField(
+        queryset=Category.objects.all(), source='category', write_only=True, required=False
+    )
+    location_id = serializers.PrimaryKeyRelatedField(
+        queryset=Location.objects.all(), source='location', write_only=True, required=False
+    )
+    agent_id = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(), source='agent', write_only=True, required=False, allow_null=True
+    )
+
     class Meta:
         model = Property
         fields = [
             'id', 'title', 'slug', 'property_code', 'description', 'price',
-            'property_type', 'category', 'location', 'bedrooms', 'bathrooms',
-            'size_land', 'size_usable', 'features', 'status', 'agent', 'images',
+            'property_type', 'category', 'location', 'category_id', 'location_id',
+            'bedrooms', 'bathrooms',
+            'size_land', 'size_usable', 'features', 'status', 'agent', 'agent_id', 'images',
             'source', 'sale_condition',
             'google_maps_link', 'latitude', 'longitude', 'floors', 'parking_spaces', 'direction', 'furniture',
             'pet_friendly', 'common_fee', 'availability', 'minimum_lease',
