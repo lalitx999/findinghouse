@@ -130,9 +130,9 @@ class PropertyViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
     def create_user_listing(self, request):
         images = request.FILES.getlist('images')
-        if len(images) < 5 or len(images) > 20:
+        if len(images) < 20 or len(images) > 30:
             return Response({
-                'error': f'กรุณาอัปโหลดรูปภาพทรัพย์อย่างน้อย 5 รูป และสูงสุดไม่เกิน 20 รูป (ปัจจุบันแนบ {len(images)} รูป)'
+                'error': f'กรุณาอัปโหลดรูปภาพทรัพย์อย่างน้อย 20 รูป และสูงสุดไม่เกิน 30 รูป (ปัจจุบันแนบ {len(images)} รูป)'
             }, status=status.HTTP_400_BAD_REQUEST)
 
         title = request.data.get('title')
@@ -258,12 +258,18 @@ class ConsignmentViewSet(viewsets.ModelViewSet):
         deeds = request.FILES.getlist('deeds')
 
         # Security: File Count and Size Limit Checks
-        MAX_IMAGES = 25
+        MAX_IMAGES = 30
         MAX_DEEDS = 10
         MAX_FILE_SIZE = 15 * 1024 * 1024  # 15 MB per file
         ALLOWED_EXTS = {'.jpg', '.jpeg', '.png', '.webp', '.pdf'}
 
         import os
+
+        if len(images) < 20:
+            return Response(
+                {'error': f'กรุณาแนบรูปภาพทรัพย์อย่างน้อย 20 รูป (แนบมา {len(images)} รูป)'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         if len(images) > MAX_IMAGES:
             return Response(

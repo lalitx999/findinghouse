@@ -217,18 +217,18 @@ class Property(models.Model):
         else:
             missing.append("ราคาขาย/เช่า")
 
-        # 4. Images count (20 pts max: 3+ images = 20, 2 images = 13, 1 image = 7)
+        # 4. Images count (20 pts max: 20+ images = 20, 10-19 images = 13, 1-9 images = 7)
         img_count = self.images.count() if self.pk else 0
-        if img_count >= 3:
+        if img_count >= 20:
             score += 20
-        elif img_count == 2:
+        elif img_count >= 10:
             score += 13
-            missing.append("รูปภาพทรัพย์ (แนะนำอย่างน้อย 3 รูป, ปัจจุบันมี 2 รูป)")
-        elif img_count == 1:
+            missing.append(f"รูปภาพทรัพย์ (แนะนำอย่างน้อย 20 รูป, ปัจจุบันมี {img_count} รูป)")
+        elif img_count >= 1:
             score += 7
-            missing.append("รูปภาพทรัพย์ (แนะนำอย่างน้อย 3 รูป, ปัจจุบันมี 1 รูป)")
+            missing.append(f"รูปภาพทรัพย์ (แนะนำอย่างน้อย 20 รูป, ปัจจุบันมี {img_count} รูป)")
         else:
-            missing.append("รูปภาพทรัพย์ (แนะนำอย่างน้อย 3 รูป)")
+            missing.append("รูปภาพทรัพย์ (แนะนำอย่างน้อย 20 รูป)")
 
         # 5. Google Maps Link (10 pts)
         if self.google_maps_link and 'http' in self.google_maps_link:
