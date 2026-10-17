@@ -1,2 +1,353 @@
-{% extends "admin/base.html" %}
-{# Delegate admin behavior and media to the installed Django version. #}
+{% load i18n static %}<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE|default:'th' }}" dir="{{ LANGUAGE_BIDI|yesno:'rtl,ltr,auto' }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ title }} | {{ site_title|default:'Finding House Admin' }}{% endblock %}</title>
+
+  <!-- Google Font: Prompt -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap">
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="{% static 'adminlte/plugins/fontawesome-free/css/all.min.css' %}">
+  <!-- Theme style -->
+  <link rel="stylesheet" href="{% static 'adminlte/css/adminlte.min.css' %}">
+  <!-- Custom Django-AdminLTE Bridge style -->
+  <link rel="stylesheet" href="{% static 'adminlte/css/adminlte-django.css' %}">
+
+  {% block extrastyle %}{% endblock %}
+  {% block extrahead %}{% endblock %}
+</head>
+
+<body class="hold-transition {% if is_popup %}popup bg-light p-3{% else %}sidebar-mini layout-fixed{% endif %} {% block bodyclass %}{% endblock %}">
+
+<div class="{% if not is_popup %}wrapper{% else %}container-fluid{% endif %}">
+
+  {% if not is_popup %}
+  <!-- Navbar -->
+  <nav class="main-header navbar navbar-expand navbar-white navbar-light border-bottom-0 shadow-sm">
+    <!-- Left navbar links -->
+    <ul class="navbar-nav">
+      <li class="nav-item">
+        <a class="nav-link text-dark" data-widget="pushmenu" href="#" role="button"><i class="fas fa-bars"></i></a>
+      </li>
+      <li class="nav-item d-none d-sm-inline-block">
+        <a href="{% url 'admin:index' %}" class="nav-link font-weight-bold text-dark">
+          <i class="fas fa-tachometer-alt mr-1 text-primary"></i> แดชบอร์ด
+        </a>
+      </li>
+      <li class="nav-item d-none d-sm-inline-block">
+        <a href="/" target="_blank" class="nav-link text-muted">
+          <i class="fas fa-external-link-alt mr-1"></i> เว็บไซต์ Finding House
+        </a>
+      </li>
+    </ul>
+
+    <!-- Right navbar links -->
+    <ul class="navbar-nav ml-auto align-items-center">
+      {% if user.is_authenticated %}
+        <li class="nav-item mr-3">
+          <span class="text-dark font-weight-bold">
+            <i class="fas fa-user-circle mr-1 text-secondary"></i>
+            {% firstof user.get_full_name user.get_username %}
+          </span>
+          <span class="badge badge-info ml-1">{% if user.is_superuser %}ผู้ดูแลสูงสุด{% else %}เจ้าหน้าที่{% endif %}</span>
+        </li>
+        <li class="nav-item d-none d-sm-inline-block mr-2">
+          <a href="{% url 'admin:password_change' %}" class="btn btn-sm btn-outline-secondary" title="เปลี่ยนรหัสผ่าน">
+            <i class="fas fa-key mr-1"></i> เปลี่ยนรหัส
+          </a>
+        </li>
+        <li class="nav-item mr-2">
+          <form id="logout-form" action="{% url 'admin:logout' %}" method="post" style="display: inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm btn-outline-danger">
+              <i class="fas fa-sign-out-alt mr-1"></i> ออกจากระบบ
+            </button>
+          </form>
+        </li>
+      {% endif %}
+      <li class="nav-item">
+        <a class="nav-link" data-widget="fullscreen" href="#" role="button" title="เต็มจอ">
+          <i class="fas fa-expand-arrows-alt"></i>
+        </a>
+      </li>
+    </ul>
+  </nav>
+  <!-- /.navbar -->
+
+  <!-- Main Sidebar Container -->
+  <aside class="main-sidebar sidebar-dark-primary elevation-4">
+    <!-- Brand Logo -->
+    <a href="{% url 'admin:index' %}" class="brand-link bg-dark">
+      <img src="{% static 'adminlte/img/AdminLTELogo.png' %}" alt="Logo" class="brand-image img-circle elevation-3" style="opacity: .8">
+      <span class="brand-text font-weight-bold">FINDING HOUSE</span>
+    </a>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <!-- Sidebar user panel -->
+      {% if user.is_authenticated %}
+      <div class="user-panel mt-3 pb-3 mb-3 d-flex align-items-center">
+        <div class="image">
+          <img src="{% static 'adminlte/img/user2-160x160.jpg' %}" class="img-circle elevation-2" alt="User Image">
+        </div>
+        <div class="info">
+          <a href="#" class="d-block font-weight-bold text-white text-truncate" style="max-width: 150px;">
+            {% firstof user.get_full_name user.get_username %}
+          </a>
+          <small class="text-success"><i class="fas fa-circle font-size-xs"></i> กำลังออนไลน์</small>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- SidebarSearch Form -->
+      <div class="form-inline mb-2">
+        <div class="input-group" data-widget="sidebar-search">
+          <input class="form-control form-control-sidebar" type="search" placeholder="ค้นหาเมนู..." aria-label="Search">
+          <div class="input-group-append">
+            <button class="btn btn-sidebar">
+              <i class="fas fa-search fa-fw"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sidebar Menu -->
+      <nav class="mt-2">
+        <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
+
+          <!-- 1. แดชบอร์ด -->
+          <li class="nav-item">
+            <a href="{% url 'admin:index' %}" class="nav-link {% if request.path == '/admin/' %}active{% endif %}">
+              <i class="nav-icon fas fa-tachometer-alt"></i>
+              <p>แดชบอร์ดผู้บริหาร</p>
+            </a>
+          </li>
+
+          <!-- 2. หมวดหมู่อสังหาริมทรัพย์ -->
+          <li class="nav-header font-weight-bold text-uppercase">จัดการอสังหาริมทรัพย์</li>
+          <li class="nav-item">
+            <a href="{% url 'admin:properties_property_changelist' %}" class="nav-link {% if '/properties/property/' in request.path %}active{% endif %}">
+              <i class="nav-icon fas fa-building text-primary"></i>
+              <p>คลังประกาศอสังหาฯ</p>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'admin:properties_consignment_changelist' %}" class="nav-link {% if '/properties/consignment/' in request.path %}active{% endif %}">
+              <i class="nav-icon fas fa-file-contract text-warning"></i>
+              <p>
+                คำขอฝากขาย & โฉนด
+                <span class="badge badge-warning right">QC</span>
+              </p>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'admin:properties_category_changelist' %}" class="nav-link {% if '/properties/category/' in request.path %}active{% endif %}">
+              <i class="nav-icon fas fa-tags"></i>
+              <p>ประเภทอสังหาฯ</p>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'admin:properties_location_changelist' %}" class="nav-link {% if '/properties/location/' in request.path %}active{% endif %}">
+              <i class="nav-icon fas fa-map-marked-alt text-danger"></i>
+              <p>พื้นที่และทำเล</p>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'admin:properties_bookmark_changelist' %}" class="nav-link {% if '/properties/bookmark/' in request.path %}active{% endif %}">
+              <i class="nav-icon fas fa-heart text-danger"></i>
+              <p>รายการโปรดผู้ใช้</p>
+            </a>
+          </li>
+
+          <!-- 3. หมวดหมู่ CRM และการขาย -->
+          <li class="nav-header font-weight-bold text-uppercase">CRM & ฝ่ายขาย</li>
+          <li class="nav-item">
+            <a href="{% url 'admin:crm_lead_changelist' %}" class="nav-link {% if '/crm/lead/' in request.path %}active{% endif %}">
+              <i class="nav-icon fas fa-user-tie text-info"></i>
+              <p>ลีดลูกค้าผู้สนใจ</p>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'admin:crm_deal_changelist' %}" class="nav-link {% if '/crm/deal/' in request.path %}active{% endif %}">
+              <i class="nav-icon fas fa-handshake text-success"></i>
+              <p>ดีล & คอมมิชชัน 50/50</p>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'admin:crm_viewingappointment_changelist' %}" class="nav-link {% if '/crm/viewingappointment/' in request.path %}active{% endif %}">
+              <i class="nav-icon fas fa-calendar-check text-primary"></i>
+              <p>นัดหมายเข้าชมบ้าน</p>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'admin:crm_leaseagreement_changelist' %}" class="nav-link {% if '/crm/leaseagreement/' in request.path %}active{% endif %}">
+              <i class="nav-icon fas fa-file-signature text-warning"></i>
+              <p>สัญญาเช่า & หมดอายุ</p>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'admin:crm_leadmatch_changelist' %}" class="nav-link {% if '/crm/leadmatch/' in request.path %}active{% endif %}">
+              <i class="nav-icon fas fa-magic text-purple"></i>
+              <p>จับคู่อสังหาฯ อัจฉริยะ</p>
+            </a>
+          </li>
+
+          <!-- 4. หมวดหมู่ความปลอดภัยและการตรวจสอบ -->
+          <li class="nav-header font-weight-bold text-uppercase">ความปลอดภัยและระบบ</li>
+          <li class="nav-item">
+            <a href="{% url 'admin:audit_auditlog_changelist' %}" class="nav-link {% if '/audit/auditlog/' in request.path %}active{% endif %}">
+              <i class="nav-icon fas fa-shield-alt text-info"></i>
+              <p>บันทึกกิจกรรม (Audit)</p>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'admin:audit_loginattempt_changelist' %}" class="nav-link {% if '/audit/loginattempt/' in request.path %}active{% endif %}">
+              <i class="nav-icon fas fa-user-lock"></i>
+              <p>ประวัติการล็อกอิน</p>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'admin:audit_usersession_changelist' %}" class="nav-link {% if '/audit/usersession/' in request.path %}active{% endif %}">
+              <i class="nav-icon fas fa-desktop text-secondary"></i>
+              <p>เซสชันอุปกรณ์</p>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'admin:audit_webhookconfig_changelist' %}" class="nav-link {% if '/audit/webhookconfig/' in request.path %}active{% endif %}">
+              <i class="nav-icon fas fa-bell text-warning"></i>
+              <p>Webhook & LINE Notify</p>
+            </a>
+          </li>
+
+          <!-- 5. หมวดหมู่ห้องแชตสด -->
+          <li class="nav-header font-weight-bold text-uppercase">แชตสดเรียลไทม์</li>
+          <li class="nav-item">
+            <a href="{% url 'admin:chat_chatroom_changelist' %}" class="nav-link {% if '/chat/chatroom/' in request.path %}active{% endif %}">
+              <i class="nav-icon fas fa-comments text-success"></i>
+              <p>ห้องสนทนาลูกค้า</p>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'admin:chat_chatmessage_changelist' %}" class="nav-link {% if '/chat/chatmessage/' in request.path %}active{% endif %}">
+              <i class="nav-icon fas fa-comment-dots"></i>
+              <p>ประวัติข้อความแชต</p>
+            </a>
+          </li>
+
+          <!-- 6. รีวิว บทความ และข้อความติดต่อ -->
+          <li class="nav-header font-weight-bold text-uppercase">รีวิว & คอนเทนต์</li>
+          <li class="nav-item">
+            <a href="{% url 'admin:reviews_customerreview_changelist' %}" class="nav-link {% if '/reviews/customerreview/' in request.path %}active{% endif %}">
+              <i class="nav-icon fas fa-star text-warning"></i>
+              <p>รีวิวจากลูกค้า</p>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'admin:reviews_article_changelist' %}" class="nav-link {% if '/reviews/article/' in request.path %}active{% endif %}">
+              <i class="nav-icon fas fa-newspaper text-info"></i>
+              <p>บทความเรื่องบ้าน</p>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'admin:inquiries_inquiry_changelist' %}" class="nav-link {% if '/inquiries/inquiry/' in request.path %}active{% endif %}">
+              <i class="nav-icon fas fa-envelope text-primary"></i>
+              <p>ข้อความสอบถาม</p>
+            </a>
+          </li>
+
+          <!-- 7. สิทธิ์และการจัดการผู้ใช้ -->
+          {% if user.is_superuser %}
+          <li class="nav-header font-weight-bold text-uppercase">ผู้ใช้งานและสิทธิ์</li>
+          <li class="nav-item">
+            <a href="{% url 'admin:auth_user_changelist' %}" class="nav-link {% if '/auth/user/' in request.path %}active{% endif %}">
+              <i class="nav-icon fas fa-users-cog text-secondary"></i>
+              <p>ผู้ใช้งานระบบ</p>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'admin:auth_group_changelist' %}" class="nav-link {% if '/auth/group/' in request.path %}active{% endif %}">
+              <i class="nav-icon fas fa-id-badge text-secondary"></i>
+              <p>กลุ่มสิทธิ์</p>
+            </a>
+          </li>
+          {% endif %}
+
+        </ul>
+      </nav>
+      <!-- /.sidebar-menu -->
+    </div>
+    <!-- /.sidebar -->
+  </aside>
+
+  <!-- Content Wrapper. Contains page content -->
+  <div class="content-wrapper">
+    <!-- Content Header (Page header) -->
+    <div class="content-header">
+      <div class="container-fluid">
+        <div class="row mb-2 align-items-center">
+          <div class="col-sm-6">
+            <h1 class="m-0 font-weight-bold text-dark" style="font-size: 1.5rem;">
+              {% block content_title %}{{ title }}{% endblock %}
+            </h1>
+          </div>
+          <div class="col-sm-6">
+            <ol class="breadcrumb float-sm-right bg-transparent p-0 mb-0">
+              {% block breadcrumbs %}
+              <li class="breadcrumb-item"><a href="{% url 'admin:index' %}"><i class="fas fa-home"></i> หน้าแรก</a></li>
+              {% if title %}<li class="breadcrumb-item active">{{ title }}</li>{% endif %}
+              {% endblock %}
+            </ol>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- /.content-header -->
+
+    <!-- Main content -->
+    <div class="content">
+      <div class="container-fluid">
+
+        <!-- Flash Messages -->
+        {% if messages %}
+          {% for message in messages %}
+            <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'success' %}success{% elif message.tags == 'warning' %}warning{% else %}info{% endif %} alert-dismissible fade show shadow-sm" role="alert">
+              <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+              </button>
+              <i class="fas fa-info-circle mr-1"></i> {{ message }}
+            </div>
+          {% endfor %}
+        {% endif %}
+  {% endif %}
+
+        {% block content %}{% endblock %}
+
+  {% if not is_popup %}
+      </div>
+    </div>
+    <!-- /.content -->
+  </div>
+  <!-- /.content-wrapper -->
+
+  <!-- Main Footer -->
+  <footer class="main-footer text-sm">
+    <div class="float-right d-none d-sm-inline">
+      <b>Finding House System</b> v1.0.0
+    </div>
+    <strong>Copyright &copy; 2026 <a href="/" class="text-primary font-weight-bold">Finding House</a>.</strong> All rights reserved.
+  </footer>
+</div>
+<!-- ./wrapper -->
+{% endif %}
+
+<!-- jQuery -->
+<script src="{% static 'adminlte/plugins/jquery/jquery.min.js' %}"></script>
+<!-- Bootstrap 4 -->
+<script src="{% static 'adminlte/plugins/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+<!-- AdminLTE App -->
+<script src="{% static 'adminlte/js/adminlte.min.js' %}"></script>
+
+{% block extrajs %}{% endblock %}
+</body>
+</html>

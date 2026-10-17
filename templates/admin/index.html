@@ -1,12 +1,249 @@
-{% extends "admin/index.html" %}
-{% load i18n vault_admin %}
-{% block content_title %}<div class="vault-page-intro"><p class="vault-eyebrow">WORKSPACE OVERVIEW</p><h1>{% if app_label %}{{ title }}{% else %}{% translate 'Dashboard' %}{% endif %}</h1><p>{% translate 'Welcome,' %} {% firstof user.get_short_name user.get_username %}. {% translate 'Select a model to manage your data.' %}</p></div>{% endblock %}
-{% block content %}
-<div class="vault-stats">
-<article><span>{% translate 'Applications' %}</span><strong>{{ app_list|length }}</strong><small>{% translate 'Available in your workspace' %}</small></article>
-<article><span>{% translate 'Models' %}</span><strong>{% model_total app_list %}</strong><small>{% translate 'Accessible with your permissions' %}</small></article>
-<article class="vault-stat-accent"><span>{% translate 'Your workspace' %}</span><strong>{% translate 'Ready' %} <span aria-hidden="true">↗</span></strong><small>{% translate 'Manage your data securely' %}</small></article>
-</div>
-{{ block.super }}
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block content_title %}
+<span class="text-secondary font-weight-normal text-sm d-block text-uppercase">ภาพรวมระบบผู้บริหาร</span>
+ศูนย์ควบคุมและแดชบอร์ดสถิติ Finding House
 {% endblock %}
 
+{% block content %}
+<!-- Quick Actions Bar -->
+<div class="row mb-4">
+  <div class="col-12">
+    <div class="card card-outline card-primary shadow-sm mb-0">
+      <div class="card-body py-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <div class="d-flex align-items-center mb-2 mb-md-0">
+          <i class="fas fa-bolt text-warning mr-2 fa-lg"></i>
+          <div>
+            <h6 class="mb-0 font-weight-bold text-dark">ทางลัดการดำเนินงานด่วน (Quick Hub)</h6>
+            <small class="text-muted">บันทึกข้อมูลสำคัญในคลิกเดียว</small>
+          </div>
+        </div>
+        <div class="btn-group flex-wrap">
+          <a href="{% url 'admin:properties_property_add' %}" class="btn btn-sm btn-primary">
+            <i class="fas fa-plus mr-1"></i> เพิ่มทรัพย์ใหม่
+          </a>
+          <a href="{% url 'admin:properties_consignment_changelist' %}" class="btn btn-sm btn-warning font-weight-bold">
+            <i class="fas fa-file-contract mr-1"></i> ตรวจโฉนดฝากขาย
+          </a>
+          <a href="{% url 'admin:crm_lead_add' %}" class="btn btn-sm btn-info">
+            <i class="fas fa-user-plus mr-1"></i> เพิ่มลีดลูกค้า
+          </a>
+          <a href="{% url 'admin:crm_deal_add' %}" class="btn btn-sm btn-success">
+            <i class="fas fa-handshake mr-1"></i> บันทึกดีลใหม่
+          </a>
+          <a href="{% url 'admin:crm_viewingappointment_add' %}" class="btn btn-sm btn-secondary">
+            <i class="fas fa-calendar-plus mr-1"></i> นัดเข้าชม
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Row 1: KPI Small Boxes -->
+<div class="row">
+  {% for c in dashboard_cards %}
+    {% if forloop.counter <= 4 %}
+    <div class="col-lg-3 col-6">
+      <div class="small-box {% if forloop.counter == 1 %}bg-info{% elif forloop.counter == 2 %}bg-warning{% elif forloop.counter == 3 %}bg-success{% else %}bg-danger{% endif %}">
+        <div class="inner">
+          <h3>
+            {% if c.money %}฿{{ c.value|floatformat:0 }}{% else %}{{ c.value }}{% endif %}
+          </h3>
+          <p>{{ c.label }}</p>
+        </div>
+        <div class="icon">
+          {% if forloop.counter == 1 %}<i class="fas fa-home"></i>
+          {% elif forloop.counter == 2 %}<i class="fas fa-user-clock"></i>
+          {% elif forloop.counter == 3 %}<i class="fas fa-users"></i>
+          {% else %}<i class="fas fa-hand-holding-usd"></i>{% endif %}
+        </div>
+        <span class="small-box-footer">
+          สถิติแบบเรียลไทม์ <i class="fas fa-arrow-circle-right"></i>
+        </span>
+      </div>
+    </div>
+    {% endif %}
+  {% empty %}
+    <div class="col-lg-3 col-6">
+      <div class="small-box bg-info">
+        <div class="inner">
+          <h3>คลังทรัพย์</h3>
+          <p>ประกาศอสังหาริมทรัพย์</p>
+        </div>
+        <div class="icon"><i class="fas fa-building"></i></div>
+        <a href="{% url 'admin:properties_property_changelist' %}" class="small-box-footer">
+          จัดการประกาศ <i class="fas fa-arrow-circle-right"></i>
+        </a>
+      </div>
+    </div>
+    <div class="col-lg-3 col-6">
+      <div class="small-box bg-warning">
+        <div class="inner">
+          <h3>งานขาย</h3>
+          <p>ลีดลูกค้าผู้สนใจ</p>
+        </div>
+        <div class="icon"><i class="fas fa-user-tie"></i></div>
+        <a href="{% url 'admin:crm_lead_changelist' %}" class="small-box-footer">
+          ติดตามลีด <i class="fas fa-arrow-circle-right"></i>
+        </a>
+      </div>
+    </div>
+    <div class="col-lg-3 col-6">
+      <div class="small-box bg-success">
+        <div class="inner">
+          <h3>ปิดการขาย</h3>
+          <p>ดีล & คอมมิชชัน 50/50</p>
+        </div>
+        <div class="icon"><i class="fas fa-handshake"></i></div>
+        <a href="{% url 'admin:crm_deal_changelist' %}" class="small-box-footer">
+          ดูไปป์ไลน์ดีล <i class="fas fa-arrow-circle-right"></i>
+        </a>
+      </div>
+    </div>
+    <div class="col-lg-3 col-6">
+      <div class="small-box bg-danger">
+        <div class="inner">
+          <h3>ฝากขาย</h3>
+          <p>คำขอฝากขาย & โฉนดลับ</p>
+        </div>
+        <div class="icon"><i class="fas fa-file-contract"></i></div>
+        <a href="{% url 'admin:properties_consignment_changelist' %}" class="small-box-footer">
+          ตรวจโฉนด QC <i class="fas fa-arrow-circle-right"></i>
+        </a>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+
+<!-- Row 2: Secondary Metrics Info Boxes -->
+{% if dashboard_cards|length > 4 %}
+<div class="row">
+  {% for c in dashboard_cards %}
+    {% if forloop.counter > 4 %}
+    <div class="col-lg-3 col-sm-6 col-12">
+      <div class="info-box shadow-sm">
+        <span class="info-box-icon {% if 'คอมมิชชัน' in c.label or 'ส่วนแบ่ง' in c.label %}bg-success{% elif 'สัญญา' in c.label %}bg-danger{% else %}bg-secondary{% endif %}">
+          {% if 'คอมมิชชัน' in c.label or 'ส่วนแบ่ง' in c.label %}<i class="fas fa-wallet"></i>
+          {% elif 'สัญญา' in c.label %}<i class="fas fa-exclamation-triangle"></i>
+          {% elif 'นัด' in c.label %}<i class="fas fa-calendar-alt"></i>
+          {% else %}<i class="fas fa-chart-line"></i>{% endif %}
+        </span>
+        <div class="info-box-content">
+          <span class="info-box-text text-muted">{{ c.label }}</span>
+          <span class="info-box-number font-weight-bold text-dark" style="font-size: 1.25rem;">
+            {% if c.money %}฿{{ c.value|floatformat:0 }}{% else %}{{ c.value }}{% endif %}
+          </span>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Row 3: Recent Activity Sections (Two Columns) -->
+<div class="row">
+  {% for sec in dashboard_sections %}
+  <div class="col-lg-6 col-12 mb-4">
+    <div class="card card-outline {% if 'ประกาศ' in sec.label %}card-primary{% elif 'ลีด' in sec.label %}card-info{% elif 'ดีล' in sec.label %}card-success{% else %}card-secondary{% endif %} shadow-sm h-100">
+      <div class="card-header border-0 d-flex justify-content-between align-items-center">
+        <h3 class="card-title font-weight-bold text-dark">
+          {% if 'ประกาศ' in sec.label %}<i class="fas fa-building mr-1 text-primary"></i>
+          {% elif 'ลีด' in sec.label %}<i class="fas fa-user-tie mr-1 text-info"></i>
+          {% elif 'ดีล' in sec.label %}<i class="fas fa-handshake mr-1 text-success"></i>
+          {% else %}<i class="fas fa-shield-alt mr-1 text-secondary"></i>{% endif %}
+          {{ sec.label }}
+        </h3>
+        <div class="card-tools">
+          <a href="{{ sec.url }}" class="btn btn-tool text-primary font-weight-bold text-sm">
+            ดูทั้งหมด <i class="fas fa-arrow-right ml-1"></i>
+          </a>
+        </div>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover table-striped align-middle mb-0">
+            <tbody>
+              {% for row in sec.rows %}
+              <tr>
+                <td class="font-weight-bold" style="width: 65%;">
+                  <a href="{{ row.url }}" class="text-dark">
+                    {{ row.label }}
+                  </a>
+                </td>
+                <td class="text-right text-muted" style="width: 35%;">
+                  <span class="badge badge-light border">{{ row.detail|default:'-' }}</span>
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="2" class="text-center text-muted py-3">
+                  <i class="fas fa-inbox mr-1"></i> ยังไม่มีข้อมูลในส่วนนี้
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Row 4: All Applications List (AdminLTE Card Accordion) -->
+<div class="row">
+  <div class="col-12">
+    <div class="card card-outline card-dark shadow-sm">
+      <div class="card-header">
+        <h3 class="card-title font-weight-bold">
+          <i class="fas fa-database mr-2 text-secondary"></i> โครงสร้างฐานข้อมูลและโมเดลทั้งหมด (All Installed Apps)
+        </h3>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-bordered table-hover mb-0">
+            <thead class="bg-light">
+              <tr>
+                <th style="width: 25%;">กลุ่มแอปพลิเคชัน</th>
+                <th>โมเดลและตารางข้อมูล</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for app in app_list %}
+              <tr>
+                <td class="font-weight-bold text-dark align-top bg-light">
+                  <i class="fas fa-cube mr-1 text-primary"></i> {{ app.name }}
+                </td>
+                <td>
+                  <div class="d-flex flex-wrap gap-2">
+                    {% for model in app.models %}
+                    <div class="btn-group btn-group-sm mr-2 mb-2">
+                      {% if model.admin_url %}
+                        <a href="{{ model.admin_url }}" class="btn btn-outline-secondary font-weight-bold">
+                          {{ model.name }}
+                        </a>
+                      {% else %}
+                        <span class="btn btn-outline-light text-muted">{{ model.name }}</span>
+                      {% endif %}
+                      {% if model.add_url %}
+                        <a href="{{ model.add_url }}" class="btn btn-outline-success" title="เพิ่มข้อมูลใหม่">
+                          <i class="fas fa-plus"></i>
+                        </a>
+                      {% endif %}
+                    </div>
+                    {% endfor %}
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
